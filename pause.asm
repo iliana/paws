@@ -66,10 +66,53 @@ dq 1                                ; sh_addralign = 1
 dq 0                                ; sh_entsize = 0
 
 entry_point:
+    ; rt_sigaction(SIGINT, noop_sigaction, 0, 8)
+    mov rax, 0x0d
+    mov rdi, 2
+    mov rsi, file_load_va + noop_sigaction
+    mov rdx, 0
+    mov r10, 8
+    syscall
+
+    ; rt_sigaction(SIGTERM, noop_sigaction, 0, 8)
+    mov rax, 0x0d
+    mov rdi, 15
+    syscall
+
+    ; rt_sigaction(SIGHUP, ignore_sigaction, 0, 8)
+    mov rax, 0x0d
+    mov rdi, 1
+    mov rsi, file_load_va + ignore_sigaction
+    syscall
+
+    ; pause()
+    mov rax, 0x22
+    syscall
+
     ; exit(0)
-    mov rax, 60
+    mov rax, 0x3c
     mov rdi, 0
     syscall
+
+noop:
+    ret
+
+restorer:
+    ; rt_sigreturn()
+    mov rax, 0x0f
+    syscall
+
+noop_sigaction:
+dq file_load_va + noop     ; sa_handler = noop
+dq 0x04000000              ; sa_flags = SA_RESTORER
+dq file_load_va + restorer ; sa_restorer = restorer
+dq 0                       ; sa_mask = 0
+
+ignore_sigaction:
+dq 1                       ; sa_handler = SIG_IGN
+dq 0                       ; sa_flags = 0
+dq 0                       ; sa_restorer = 0
+dq 0                       ; sa_mask = 0
 
 string_table:
 db 0
