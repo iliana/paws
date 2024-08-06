@@ -40,32 +40,32 @@ dq file_end     ; p_memsz = file_end
 dq 0x200000     ; p_align = 0x200000
 
 entry_point:
+    ; rt_sigaction(SIGHUP, ignore_sigaction, 0, 8)
+    mov al, 0x0d
+    inc edi
+    mov esi, file_load_va + ignore_sigaction
+    mov r10b, 8
+    syscall
+
     ; rt_sigaction(SIGINT, noop_sigaction, 0, 8)
-    mov rax, 0x0d
-    mov rdi, 2
-    mov rsi, file_load_va + noop_sigaction
-    mov rdx, 0
-    mov r10, 8
+    mov al, 0x0d
+    inc edi
+    sub esi, ignore_sigaction - noop_sigaction
     syscall
 
     ; rt_sigaction(SIGTERM, noop_sigaction, 0, 8)
-    mov rax, 0x0d
-    mov rdi, 15
-    syscall
-
-    ; rt_sigaction(SIGHUP, ignore_sigaction, 0, 8)
-    mov rax, 0x0d
-    mov rdi, 1
-    mov rsi, file_load_va + ignore_sigaction
+    mov al, 0x0d
+    mov dil, 15
     syscall
 
     ; pause()
-    mov rax, 0x22
+    mov al, 0x22
     syscall
 
     ; exit(0)
-    mov rax, 0x3c
-    mov rdi, 0
+    xchg eax, ebx
+    mov al, 0x3c
+    xor edi, edi
     syscall
 
 noop:
@@ -83,9 +83,6 @@ dq file_load_va + restorer ; sa_restorer = restorer
 dq 0                       ; sa_mask = 0
 
 ignore_sigaction:
-dq 1                       ; sa_handler = SIG_IGN
-dq 0                       ; sa_flags = 0
-dq 0                       ; sa_restorer = 0
-dq 0                       ; sa_mask = 0
+db 1                       ; sa_handler = SIG_IGN
 
 file_end:
