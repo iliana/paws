@@ -34,7 +34,18 @@ dd 1            ; p_type = PT_LOAD
 dd 5            ; p_flags = PF_R+PF_X
 dq 0            ; p_offset = 0
 dq file_load_va ; p_vaddr = file_load_va
-dq file_load_va ; p_paddr = file_load_va
+
+; value of p_paddr for ET_EXEC is "unspecified", so stuff code here
+noop:
+    ret
+
+restorer:
+    ; rt_sigreturn()
+    mov al, 0x0f
+    syscall
+
+times 3 nop
+
 dq file_end     ; p_filesz = file_end
 dq file_end     ; p_memsz = file_end
 dq 0x200000     ; p_align = 0x200000
@@ -68,13 +79,6 @@ entry_point:
     xor edi, edi
     syscall
 
-noop:
-    ret
-
-restorer:
-    ; rt_sigreturn()
-    mov rax, 0x0f
-    syscall
 
 noop_sigaction:
 dq file_load_va + noop     ; sa_handler = noop
