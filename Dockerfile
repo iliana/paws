@@ -5,7 +5,7 @@ FROM alpine AS builder
 
 ARG TARGETPLATFORM
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; \
-    then apk add --no-cache clang binutils; \
+    then apk add --no-cache clang lld; \
     else apk add --no-cache gcc git linux-headers musl-dev; \
     fi
 
@@ -14,7 +14,7 @@ ADD ./linker.ld /linker.ld
 ADD ./fallback.c /fallback.c
 
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; \
-    then clang x86_64.s -nostdlib -Wl,-T,linker.ld -o pause; \
+    then clang x86_64.s -static -nostdlib -fuse-ld=lld -Wl,-T,linker.ld -Wl,--oformat=binary -o pause; \
     else gcc -static -o pause fallback.c && strip pause; \
     fi
 
