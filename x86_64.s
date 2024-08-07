@@ -31,57 +31,33 @@ program_headers_start:
     .8byte 0                       # p_offset = 0
     .8byte file_load_va            # p_vaddr = file_load_va
 
-    # value of p_paddr for ET_EXEC is "unspecified", so stuff code here
-noop:
-    ret
-
-restorer:
-    # rt_sigreturn()
-    mov $0x0f, %al
-    syscall
-
-    .org noop + 8
+    # value of p_paddr for ET_EXEC is "unspecified", so stuff a constant here
+sigset:
+    .8byte 16387
 
     .8byte file_end - file_load_va # p_filesz = file_end
     .8byte file_end - file_load_va # p_memsz = file_end
     .8byte 0x200000                # p_align = 0x200000
 
 entry_point:
-    # rt_sigaction(SIGHUP, ignore_sigaction, 0, 8)
-    mov $0x0d, %al
-    inc %edi
-    mov $ignore_sigaction, %esi
+    # rt_sigprocmask(SIG_BLOCK, &sigset, 0)
+    mov $0x0e, %al
+    mov $sigset, %esi
     mov $8, %r10b
     syscall
 
-    # rt_sigaction(SIGINT, noop_sigaction, 0, 8)
-    mov $0x0d, %al
-    inc %edi
-    sub $(ignore_sigaction - noop_sigaction), %esi
+    # rt_sigtimedwait(&sigset, 0, 0)
+    xchg %edi, %esi
+wait:
+    xor %eax, %eax
+    mov $0x80, %al
     syscall
-
-    # rt_sigaction(SIGTERM, noop_sigaction, 0, 8)
-    mov $0x0d, %al
-    mov $15, %dil
-    syscall
-
-    # pause()
-    mov $0x22, %al
-    syscall
+    sub $2, %eax
+    js wait
 
     # exit(0)
-    xchg %ebx, %eax
     mov $0x3c, %al
     xor %edi, %edi
     syscall
-
-noop_sigaction:
-    .8byte noop       # sa_handler = noop
-    .8byte 0x04000000 # sa_flags = SA_RESTORER
-    .8byte restorer   # sa_restorer = restorer
-    .8byte 0          # sa_mask = 0
-
-ignore_sigaction:
-    .byte  1          # sa_handler = SIG_IGN
 
 file_end:
